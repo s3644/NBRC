@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCI Bladder Risk Calculator</title>
+<style>
+/* ═══════════════════════════════════════════════ */
+/*  SCI BLADDER RISK CALCULATOR — Clinical Web App */
+/* ═══════════════════════════════════════════════ */
+:root {
+  --low: #2e7d32; --mod: #e65100; --high: #c62828;
+  --bg: #f5f7fa; --card: #ffffff; --border: #e0e0e0;
+  --text: #263238; --sub: #607d8b; --accent: #1565c0;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--text); line-height: 1.6;
+}
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, #1a237e, #0d47a1);
+  color: white; padding: 1.5rem 2rem; text-align: center;
+}
+.header h1 { font-size: 1.6rem; font-weight: 700; }
+.header p { font-size: 0.85rem; opacity: 0.85; margin-top: 0.25rem; }
+.header .badge {
+  display: inline-block; background: rgba(255,255,255,0.2);
+  padding: 0.2rem 0.8rem; border-radius: 12px; font-size: 0.75rem;
+  margin: 0.3rem 0.2rem;
+}
+
+/* Layout */
+.container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+
+/* Cards */
+.card {
+  background: var(--card); border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06); padding: 1.5rem;
+}
+.card h2 {
+  font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;
+  padding-bottom: 0.5rem; border-bottom: 2px solid #e8eaf6;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.card h2 .icon { font-size: 1.3rem; }
+
+/* Form */
+.form-group { margin-bottom: 0.9rem; }
+.form-group label {
+  display: block; font-size: 0.8rem; font-weight: 600;
+  color: var(--sub); margin-bottom: 0.25rem; text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.form-group select, .form-group input {
+  width: 100%; padding: 0.6rem 0.8rem; border: 1.5px solid var(--border);
+  border-radius: 8px; font-size: 0.9rem; color: var(--text);
+  background: #fafafa; transition: border-color 0.2s;
+}
+.form-group select:focus, .form-group input:focus {
+  outline: none; border-color: var(--accent); background: white;
+}
+.form-group .optional {
+  font-size: 0.7rem; color: #90a4ae; margin-left: 0.3rem;
+}
+
+/* Buttons */
+.btn {
+  width: 100%; padding: 0.75rem; border: none; border-radius: 8px;
+  font-size: 0.95rem; font-weight: 600; cursor: pointer;
+  transition: all 0.2s; margin-top: 0.5rem;
+}
+.btn-primary {
+  background: var(--accent); color: white;
+}
+.btn-primary:hover { background: #0d47a1; transform: translateY(-1px); }
+.btn-reset {
+  background: #eceff1; color: var(--text);
+}
+.btn-reset:hover { background: #cfd8dc; }
+
+/* Results */
+#results { display: none; }
+#results.show { display: block; }
+
+.tier-display {
+  text-align: center; padding: 1.5rem; border-radius: 12px;
+  margin-bottom: 1rem;
+}
+.tier-display.low { background: #e8f5e9; border: 2px solid var(--low); }
+.tier-display.moderate { background: #fff3e0; border: 2px solid var(--mod); }
+.tier-display.high { background: #ffebee; border: 2px solid var(--high); }
+
+.tier-emoji { font-size: 3rem; display: block; margin-bottom: 0.3rem; }
+.tier-label { font-size: 1.4rem; font-weight: 700; }
+.tier-score { font-size: 0.9rem; color: var(--sub); margin-top: 0.2rem; }
+
+.metric-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+}
+.metric {
+  background: #f5f7fa; padding: 0.75rem; border-radius: 8px;
+  text-align: center;
+}
+.metric .val { font-size: 1.3rem; font-weight: 700; }
+.metric .lbl { font-size: 0.7rem; color: var(--sub); margin-top: 0.15rem; text-transform: uppercase; }
+
+.schedule-row {
+  display: flex; justify-content: space-between; padding: 0.45rem 0;
+  border-bottom: 1px solid #f0f0f0; font-size: 0.85rem;
+}
+.schedule-row:last-child { border-bottom: none; }
+.schedule-row .freq { font-weight: 600; color: var(--accent); }
+
+.comp-row {
+  display: flex; justify-content: space-between; padding: 0.4rem 0;
+  font-size: 0.82rem;
+}
+.comp-row .risk-bar {
+  width: 120px; height: 6px; background: #e0e0e0; border-radius: 3px;
+  align-self: center; overflow: hidden;
+}
+.comp-row .risk-fill { height: 100%; border-radius: 3px; }
+
+.safety-alert {
+  background: #fff3e0; border-left: 4px solid #ff9800;
+  padding: 0.75rem; border-radius: 0 8px 8px 0; margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+.safety-alert strong { color: var(--mod); }
+
+.confidence-badge {
+  display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px;
+  font-size: 0.75rem; font-weight: 600;
+}
+.confidence-badge.high-conf { background: #e8f5e9; color: var(--low); }
+.confidence-badge.low-conf { background: #fff3e0; color: var(--mod); }
+
+/* Score breakdown */
+.breakdown {
+  font-size: 0.8rem; margin: 0.75rem 0;
+}
+.breakdown-row {
+  display: flex; justify-content: space-between; padding: 0.25rem 0;
+}
+.breakdown-row .pts { font-weight: 600; }
+.breakdown-total {
+  border-top: 2px solid #e0e0e0; padding-top: 0.4rem; font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* Footer */
+.footer {
+  text-align: center; padding: 1rem; font-size: 0.75rem;
+  color: var(--sub); margin-top: 1rem;
+}
+.footer a { color: var(--accent); }
+
+/* Animation */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+#results.show { animation: fadeIn 0.4s ease; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🧬 SCI Bladder Risk Calculator</h1>
+  <p>ML-Based Risk Stratification for Neurogenic Bladder in Spinal Cord Injury</p>
+  <span class="badge">V3.0</span>
+  <span class="badge">435 patients</span>
+  <span class="badge">F1 = 0.701</span>
+  <span class="badge">C-index = 0.893</span>
+</div>
+
+<div class="container">
+  <div class="grid">
+
+    <!-- ═══ INPUT CARD ═══ -->
+    <div>
+      <div class="card">
+        <h2><span class="icon">📋</span> Patient Assessment</h2>
+        <form id="riskForm">
+
+          <div class="form-group">
+            <label for="asia">ASIA Grade</label>
+            <select id="asia" required>
+              <option value="">-- Select --</option>
+              <option value="A">A — Complete motor & sensory loss</option>
+              <option value="B">B — Sensory incomplete</option>
+              <option value="C">C — Motor incomplete (&lt;3/5)</option>
+              <option value="D">D — Motor incomplete (≥3/5)</option>
+              <option value="E">E — Normal</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="age_group">Age Group</label>
+            <select id="age_group" required>
+              <option value="">-- Select --</option>
+              <option value="<40">&lt; 40 years</option>
+              <option value="40-60">40–60 years</option>
+              <option value=">60">&gt; 60 years</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="time_sci">Time Since SCI</label>
+            <select id="time_sci" required>
+              <option value="">-- Select --</option>
+              <option value="<2">&lt; 2 years</option>
+              <option value="2-10">2–10 years</option>
+              <option value=">10">&gt; 10 years</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="lesion_level">Neurological Level</label>
+            <select id="lesion_level" required>
+              <option value="">-- Select --</option>
+              <option value="cervical">Cervical (C1–C8)</option>
+              <option value="thoracic">Thoracic (T1–T12)</option>
+              <option value="lumbar">Lumbar / Sacral / Cauda</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="sphincter_tone">Sphincter Tone</label>
+            <select id="sphincter_tone" required>
+              <option value="">-- Select --</option>
+              <option value="normal">Normal</option>
+              <option value="abnormal">Abnormal (Increased/Decreased)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="ckd">Chronic Kidney Disease</label>
+            <select id="ckd" required>
+              <option value="">-- Select --</option>
+              <option value="yes">Present</option>
+              <option value="no">Absent</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="ad_history">History of Autonomic Dysreflexia</label>
+            <select id="ad_history" required>
+              <option value="">-- Select --</option>
+              <option value="yes">Present</option>
+              <option value="no">Absent</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="uti_history">≥1 Past Urinary Tract Infection</label>
+            <select id="uti_history" required>
+              <option value="">-- Select --</option>
+              <option value="yes">Present</option>
+              <option value="no">Absent</option>
+            </select>
+          </div>
+
+          <hr style="border-color:#e0e0e0; margin: 1rem 0;">
+
+          <h3 style="font-size:0.9rem; color:var(--sub); margin-bottom:0.5rem;">
+            🔬 Urodynamic Values <span class="optional">(optional — safety net)</span>
+          </h3>
+
+          <div class="form-group">
+            <label for="capacity">Bladder Capacity (mL) <span class="optional">optional</span></label>
+            <input type="number" id="capacity" placeholder="e.g. 250" min="0" step="1">
+          </div>
+
+          <div class="form-group">
+            <label for="pressure">Detrusor Pressure (cmH₂O) <span class="optional">optional</span></label>
+            <input type="number" id="pressure" placeholder="e.g. 35" min="0" step="1">
+          </div>
+
+          <div class="form-group">
+            <label for="compliance">Compliance (mL/cmH₂O) <span class="optional">optional</span></label>
+            <input type="number" id="compliance" placeholder="e.g. 15" min="0" step="0.1">
+          </div>
+
+          <button type="submit" class="btn btn-primary">🔍 Calculate Risk</button>
+          <button type="button" class="btn btn-reset" onclick="resetForm()">↺ Reset</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ═══ RESULTS CARD ═══ -->
+    <div>
+      <div id="results">
+        <div class="card">
+          <h2><span class="icon">📊</span> Risk Assessment</h2>
+
+          <div id="tierDisplay" class="tier-display"></div>
+
+          <div id="safetyAlert" class="safety-alert" style="display:none;"></div>
+
+          <h3 style="font-size:0.85rem; color:var(--sub); margin: 0.75rem 0 0.4rem;">SCORE BREAKDOWN</h3>
+          <div id="breakdown" class="breakdown"></div>
+
+          <h3 style="font-size:0.85rem; color:var(--sub); margin: 0.75rem 0 0.4rem;">MONITORING SCHEDULE</h3>
+          <div id="schedule"></div>
+
+          <h3 style="font-size:0.85rem; color:var(--sub); margin: 0.75rem 0 0.4rem;">COMPLICATION RISK PROFILE</h3>
+          <div id="complications"></div>
+
+          <h3 style="font-size:0.85rem; color:var(--sub); margin: 0.75rem 0 0.4rem;">SURVIVAL ESTIMATE</h3>
+          <div id="survival" class="metric-grid" style="margin-top:0.25rem;"></div>
+
+          <h3 style="font-size:0.85rem; color:var(--sub); margin: 0.75rem 0 0.4rem;">CLINICAL ACTIONS</h3>
+          <div id="actions" style="font-size:0.82rem; line-height:1.7;"></div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="emptyState" class="card" style="text-align:center; color:var(--sub);">
+        <h2><span class="icon">🧬</span> Ready</h2>
+        <p style="margin-top:1rem;">Fill in the patient assessment form<br>and click <strong>Calculate Risk</strong>.</p>
+        <p style="font-size:0.8rem; margin-top:0.5rem;">
+          Based on ML analysis of<br><strong>435 SCI patients / 2,701 visits</strong>
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer">
+  SCI Bladder Risk Calculator v3.0 &nbsp;|&nbsp;
+  Gradient Boosting (F1=0.701) + Survival (C-index=0.893) &nbsp;|&nbsp;
+  <a href="#" onclick="return false;">Not a substitute for clinical judgment</a>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  SCORING LOGIC (from V2 model + 6 experiments)
+// ═══════════════════════════════════════════════
+
+const SCORING = {
+  ASIA:  { A: 10, B: 8, C: 6, D: 4, E: 0 },
+  AGE:   { '<40': 5, '40-60': 8, '>60': 10 },
+  TSI:   { '<2': 5, '2-10': 7, '>10': 8 },
+  LESION:{ cervical: 5, thoracic: 4, lumbar: 2, sacral: 2, cauda: 2 },
+  SPHINCTER: { normal: 0, abnormal: 2 },
+  CKD:   { yes: 1, no: 0 },
+  AD:    { yes: 1, no: 0 },
+  UTI:   { yes: 1, no: 0 }
+};
+
+const FEATURE_NAMES = {
+  ASIA: 'ASIA Grade', AGE: 'Age Group', TSI: 'Time since SCI',
+  LESION: 'Neurological Level', SPHINCTER: 'Sphincter Tone',
+  CKD: 'Chronic Kidney Disease', AD: 'Autonomic Dysreflexia Hx',
+  UTI: '≥1 Past UTI'
+};
+
+const FEATURE_LABELS = {
+  ASIA: { A:'A (Complete)', B:'B (Sensory)', C:'C (Motor <3/5)', D:'D (Motor ≥3/5)', E:'E (Normal)' },
+  AGE: { '<40':'< 40 years', '40-60':'40–60 years', '>60':'> 60 years' },
+  TSI: { '<2':'< 2 years', '2-10':'2–10 years', '>10':'> 10 years' },
+  LESION: { cervical:'Cervical', thoracic:'Thoracic', lumbar:'Lumbar/Sacral' },
+  SPHINCTER: { normal:'Normal', abnormal:'Abnormal' },
+  CKD: { yes:'Present', no:'Absent' },
+  AD: { yes:'Present', no:'Absent' },
+  UTI: { yes:'Present', no:'Absent' }
+};
+
+const SCHEDULES = {
+  'Low Risk': {
+    monitoring: 'Annual (every 12 months)',
+    urodynamics: 'Every 12 months',
+    clinic: 'Every 12 months',
+    renal: 'Every 24 months',
+    creatinine: 'Every 12 months'
+  },
+  'Moderate Risk': {
+    monitoring: 'Semi-Annual (every 6 months)',
+    urodynamics: 'Every 6 months',
+    clinic: 'Every 6 months',
+    renal: 'Every 12 months',
+    creatinine: 'Every 6 months'
+  },
+  'High Risk': {
+    monitoring: 'Quarterly (every 3 months)',
+    urodynamics: 'Every 3 months',
+    clinic: 'Every 3 months',
+    renal: 'Every 6 months',
+    creatinine: 'Every 3 months'
+  }
+};
+
+const COMPLICATIONS = {
+  'Low Risk': {
+    'Low Compliance (≤20)': [15, 25],
+    'Urinary Tract Infection': [20, 28],
+    'Autonomic Dysreflexia': [8, 15],
+    'Hydronephrosis': [3, 8],
+    'Urinary Stones': [5, 10]
+  },
+  'Moderate Risk': {
+    'Low Compliance (≤20)': [40, 55],
+    'Urinary Tract Infection': [30, 40],
+    'Autonomic Dysreflexia': [18, 28],
+    'Hydronephrosis': [10, 18],
+    'Urinary Stones': [10, 15]
+  },
+  'High Risk': {
+    'Low Compliance (≤20)': [70, 85],
+    'Urinary Tract Infection': [45, 60],
+    'Autonomic Dysreflexia': [35, 50],
+    'Hydronephrosis': [20, 35],
+    'Urinary Stones': [15, 25]
+  }
+};
+
+const SURVIVAL = {
+  'Low Risk': { median: '6.6 years', range: '3.2–9.1 years', label: 'Safe for annual monitoring' },
+  'Moderate Risk': { median: '1.7 years', range: '0.9–2.8 years', label: 'Semi-annual appropriate' },
+  'High Risk': { median: '0.4 years', range: '0.1–1.1 years', label: 'Quarterly essential' }
+};
+
+const ACTIONS = {
+  'Low Risk': [
+    'Continue current bladder management',
+    'Report new autonomic dysreflexia symptoms',
+    'Report recurrent UTIs (>3/year)',
+    'No activity restrictions'
+  ],
+  'Moderate Risk': [
+    'Strict adherence to bladder regimen',
+    'Optimize anticholinergic therapy',
+    'Blood pressure monitoring at home',
+    'Increase fluid intake if UTI-prone',
+    'Report any deterioration between visits'
+  ],
+  'High Risk': [
+    'Consider botulinum toxin A if refractory',
+    'Review catheterization method (CIC vs Foley)',
+    'Consider alpha-blockers for outlet obstruction',
+    'Tight comorbidity management (HT, DM, CKD)',
+    'Weekly home blood pressure monitoring',
+    'Urology co-management recommended'
+  ]
+};
+
+// ═══════════════════════════════════════════════
+//  CALCULATE
+// ═══════════════════════════════════════════════
+
+function calculateRisk() {
+  // Collect inputs
+  const asia = document.getElementById('asia').value;
+  const age = document.getElementById('age_group').value;
+  const tsi = document.getElementById('time_sci').value;
+  const lesion = document.getElementById('lesion_level').value;
+  const sphincter = document.getElementById('sphincter_tone').value;
+  const ckd = document.getElementById('ckd').value;
+  const ad = document.getElementById('ad_history').value;
+  const uti = document.getElementById('uti_history').value;
+
+  // Validate
+  if (!asia || !age || !tsi || !lesion || !sphincter || !ckd || !ad || !uti) {
+    alert('Please fill in all required fields (marked with *).');
+    return;
+  }
+
+  // Score
+  let score = 0;
+  const breakdown = [];
+
+  function add(feature, key, val, labelKey) {
+    const pts = SCORING[feature][key];
+    score += pts;
+    breakdown.push({
+      name: FEATURE_NAMES[feature],
+      value: FEATURE_LABELS[feature][key],
+      points: pts
+    });
+  }
+
+  add('ASIA', asia, SCORING.ASIA[asia], asia);
+  add('AGE', age, SCORING.AGE[age], age);
+  add('TSI', tsi, SCORING.TSI[tsi], tsi);
+  add('LESION', lesion, SCORING.LESION[lesion], lesion);
+  add('SPHINCTER', sphincter, SCORING.SPHINCTER[sphincter], sphincter);
+  add('CKD', ckd, SCORING.CKD[ckd], ckd);
+  add('AD', ad, SCORING.AD[ad], ad);
+  add('UTI', uti, SCORING.UTI[uti], uti);
+
+  // ML tier
+  let tier;
+  if (score <= 10) tier = 'Low Risk';
+  else if (score <= 20) tier = 'Moderate Risk';
+  else tier = 'High Risk';
+
+  // Safety net
+  const capacity = parseFloat(document.getElementById('capacity').value) || null;
+  const pressure = parseFloat(document.getElementById('pressure').value) || null;
+  const compliance = parseFloat(document.getElementById('compliance').value) || null;
+
+  let triggers = [];
+  if (capacity !== null && capacity < 200) triggers.push(`Capacity ${capacity} mL < 200 mL`);
+  if (pressure !== null && pressure > 40) triggers.push(`Pressure ${pressure} cmH₂O > 40 cmH₂O`);
+  if (compliance !== null && compliance <= 20) triggers.push(`Compliance ${compliance} ≤ 20`);
+
+  let finalTier = tier;
+  const tierOrder = ['Low Risk', 'Moderate Risk', 'High Risk'];
+  if (triggers.length >= 2) {
+    finalTier = 'High Risk';
+  } else if (triggers.length >= 1) {
+    if (tierOrder.indexOf('Moderate Risk') > tierOrder.indexOf(tier)) {
+      finalTier = 'Moderate Risk';
+    }
+  }
+
+  const escalated = finalTier !== tier;
+
+  // Confidence (simplified)
+  const confidence = score > 25 || score < 8 ? 'high' : 'moderate';
+
+  // Render
+  renderResults(tier, finalTier, score, breakdown, triggers, escalated, confidence, capacity, pressure, compliance);
+}
+
+// ═══════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════
+
+function renderResults(mlTier, finalTier, score, breakdown, triggers, escalated, confidence) {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('results').classList.add('show');
+
+  const tierEmoji = { 'Low Risk': '🟢', 'Moderate Risk': '🟡', 'High Risk': '🔴' };
+  const tierClass = { 'Low Risk': 'low', 'Moderate Risk': 'moderate', 'High Risk': 'high' };
+
+  // Tier display
+  const tierDiv = document.getElementById('tierDisplay');
+  tierDiv.className = 'tier-display ' + tierClass[finalTier];
+  tierDiv.innerHTML = `
+    <span class="tier-emoji">${tierEmoji[finalTier]}</span>
+    <div class="tier-label">${finalTier}</div>
+    <div class="tier-score">Total Score: ${score} pts &nbsp;|&nbsp;
+      <span class="confidence-badge ${confidence}-conf">${confidence === 'high' ? 'High Confidence' : 'Moderate Confidence'}</span>
+    </div>
+    ${escalated ? `<div style="margin-top:0.5rem; color:var(--mod); font-size:0.85rem;">⬆️ Escalated from ML-predicted <strong>${mlTier}</strong> by safety net</div>` : ''}
+  `;
+
+  // Safety alert
+  const alertDiv = document.getElementById('safetyAlert');
+  if (triggers.length > 0) {
+    alertDiv.style.display = 'block';
+    alertDiv.innerHTML = `<strong>⚠️ Safety Net Triggered:</strong><br>${triggers.map(t => '• ' + t).join('<br>')}`;
+  } else {
+    alertDiv.style.display = 'none';
+  }
+
+  // Score breakdown
+  const bdDiv = document.getElementById('breakdown');
+  bdDiv.innerHTML = breakdown.map(b =>
+    `<div class="breakdown-row"><span>${b.name}: ${b.value}</span><span class="pts">${b.points} pts</span></div>`
+  ).join('') + `<div class="breakdown-row breakdown-total"><span>TOTAL</span><span class="pts">${score} pts</span></div>`;
+
+  // Schedule
+  const sched = SCHEDULES[finalTier];
+  document.getElementById('schedule').innerHTML = `
+    <div class="schedule-row"><span>Monitoring</span><span class="freq">${sched.monitoring}</span></div>
+    <div class="schedule-row"><span>Urodynamics</span><span class="freq">${sched.urodynamics}</span></div>
+    <div class="schedule-row"><span>Clinic Visit</span><span class="freq">${sched.clinic}</span></div>
+    <div class="schedule-row"><span>Renal Ultrasound</span><span class="freq">${sched.renal}</span></div>
+    <div class="schedule-row"><span>Creatinine / eGFR</span><span class="freq">${sched.creatinine}</span></div>
+  `;
+
+  // Complications
+  const comps = COMPLICATIONS[finalTier];
+  document.getElementById('complications').innerHTML = Object.entries(comps).map(([name, range]) => {
+    const mid = (range[0] + range[1]) / 2;
+    const color = mid > 50 ? 'var(--high)' : mid > 25 ? 'var(--mod)' : 'var(--low)';
+    return `<div class="comp-row">
+      <span>${name}</span>
+      <span style="font-weight:600;">${range[0]}–${range[1]}%</span>
+      <div class="risk-bar"><div class="risk-fill" style="width:${mid}%; background:${color};"></div></div>
+    </div>`;
+  }).join('');
+
+  // Survival
+  const surv = SURVIVAL[finalTier];
+  document.getElementById('survival').innerHTML = `
+    <div class="metric"><div class="val">${surv.median}</div><div class="lbl">Median Time to Severe</div></div>
+    <div class="metric"><div class="val">${surv.range}</div><div class="lbl">IQR Range</div></div>
+    <div class="metric" style="grid-column:1/-1;"><div class="lbl" style="font-size:0.8rem;">${surv.label}</div></div>
+  `;
+
+  // Actions
+  const acts = ACTIONS[finalTier];
+  document.getElementById('actions').innerHTML = acts.map(a => '• ' + a).join('<br>');
+}
+
+// ═══════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════
+
+function resetForm() {
+  document.getElementById('riskForm').reset();
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('emptyState').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+
+document.getElementById('riskForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  calculateRisk();
+  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+});
+</script>
+
+</body>
+</html>
